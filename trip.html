@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>未来旅程规划 - 陈同学</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --accent-color: #0071e3;
+        }
+
+        body {
+            background: radial-gradient(circle at top right, #1a1a2e, #16213e, #0f3460);
+            min-height: 100vh;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica;
+        }
+
+        /* 液态玻璃核心样式 */
+        .glass-effect {
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px) saturate(160%);
+            -webkit-backdrop-filter: blur(15px) saturate(160%);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .glass-effect:hover {
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.4);
+        }
+
+        /* 标题光晕效果 */
+        .glow-text {
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+            background: linear-gradient(to bottom, #fff, #ccc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* 流光按钮动画 */
+        .shimmer-btn {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(90deg, #0071e3, #00d4ff);
+        }
+
+        .shimmer-btn::after {
+            content: "";
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.2), transparent);
+            transform: rotate(45deg);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        /* 隐藏滚动条 */
+        ::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div id="app" class="max-w-4xl mx-auto">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl md:text-5xl font-bold glow-text mb-4">{{ title }}</h1>
+            
+            <div class="flex flex-wrap justify-center gap-3 mt-6">
+                <div v-for="tag in allTags" :key="tag" 
+                     class="glass-effect px-4 py-1 text-sm cursor-pointer hover:bg-white/20">
+                    # {{ tag }}
+                </div>
+                <button @click="addTag" class="glass-effect px-3 py-1 border-dashed border-white/40">+</button>
+            </div>
+        </header>
+
+        <main class="space-y-8">
+            <div v-for="(plan, index) in plans" :key="plan.id" class="glass-effect p-6 relative">
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <span class="text-xs uppercase tracking-widest text-white/50">方案 {{ index + 1 }}</span>
+                        <h2 class="text-2xl font-semibold mt-1 outline-none focus:border-b" contenteditable="true" @blur="plan.title = $event.target.innerText">
+                            {{ plan.title }}
+                        </h2>
+                    </div>
+                    <button @click="selectPlan(index + 1)" class="shimmer-btn px-6 py-2 rounded-full font-medium text-sm">
+                        选择此旅程
+                    </button>
+                </div>
+
+                <div class="flex flex-nowrap overflow-x-auto gap-4 pb-4">
+                    <div v-for="(loc, lIdx) in plan.locations" :key="lIdx" class="min-w-[240px] glass-effect bg-white/5 p-4 relative">
+                        <input v-model="loc.name" class="bg-transparent border-none font-bold text-lg w-full focus:outline-none" placeholder="地点名称">
+                        <div class="mt-4 space-y-2">
+                            <div v-for="note in loc.notes" class="bg-black/20 p-2 rounded-lg text-xs">
+                                <strong>{{ note.title }}</strong>
+                                <p class="opacity-70 mt-1">{{ note.content }}</p>
+                            </div>
+                        </div>
+                        <div class="absolute bottom-2 right-2 text-[10px] opacity-40 italic">
+                            {{ loc.time || '未设时间' }}
+                        </div>
+                    </div>
+                    <button @click="addLocation(plan)" class="glass-effect min-w-[60px] flex items-center justify-center text-2xl hover:bg-white/10">+</button>
+                </div>
+            </div>
+        </main>
+
+        <button @click="addPlan" class="fixed bottom-8 right-8 w-14 h-14 bg-white text-black rounded-full shadow-2xl flex items-center justify-center text-3xl font-light hover:scale-110 transition-transform">
+            +
+        </button>
+
+        <button @click="generateShareLink" class="fixed top-8 right-8 glass-effect px-4 py-2 text-xs font-semibold uppercase tracking-wider">
+            生成分享链接
+        </button>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const title = ref("陈同学，请选择你的旅程");
+                const allTags = ref(["海滨", "自驾", "美食"]);
+                const plans = ref([
+                    {
+                        id: Date.now(),
+                        title: "大理洱海环游方案",
+                        locations: [
+                            { name: "双廊古镇", time: "10:00 AM", notes: [{ title: "午餐", content: "找一家临海餐厅" }] },
+                            { name: "喜洲粑粑", time: "02:30 PM", notes: [] }
+                        ]
+                    }
+                ]);
+
+                const addPlan = () => {
+                    plans.value.push({
+                        id: Date.now(),
+                        title: "新旅行方案",
+                        locations: [{ name: "起始站", time: "09:00 AM", notes: [] }]
+                    });
+                };
+
+                const addLocation = (plan) => {
+                    plan.locations.push({ name: "新地点", time: "", notes: [] });
+                };
+
+                const selectPlan = (idx) => {
+                    if(confirm(`确定选择方案 ${idx} 吗？`)) {
+                        alert("旅程已确认！数据已同步至云端（演示）。");
+                    }
+                };
+
+                const generateShareLink = () => {
+                    const data = JSON.stringify({ title: title.value, plans: plans.value });
+                    const encoded = btoa(encodeURIComponent(data));
+                    const link = `${window.location.origin}${window.location.pathname}#data=${encoded}`;
+                    console.log("分享链接:", link);
+                    alert("分享链接已生成（控制台查看），发送给朋友即可复现！");
+                };
+
+                return { title, allTags, plans, addPlan, addLocation, selectPlan, generateShareLink };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
